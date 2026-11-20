@@ -1,5 +1,18 @@
 # Hero reel footage
 
+## Street Heat poster photography
+
+The burger and taco photos are illustrative, not photographs of the listed
+restaurants or dishes. The real daily pick appears in its own labelled card.
+
+- `street-burger.webp`: [Burger photograph on Unsplash](https://images.unsplash.com/photo-1568901346375-23c9450c58cd).
+- `street-tacos.webp`: [Taco photograph on Unsplash](https://images.unsplash.com/photo-1551504734-5ee1c4a1479b).
+
+Downloaded November 20, 2026; resized and compressed to WebP under the
+[Unsplash License](https://unsplash.com/license).
+
+## Local film
+
 The locally hosted, silent 18-second `craving-reel.mp4` is an edited montage
 of the following Mixkit clips, downloaded November 20, 2026. Each source
 page identifies the clip as **Mixkit Stock Video Free License** (commercial

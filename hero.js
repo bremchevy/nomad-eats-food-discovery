@@ -1,84 +1,76 @@
-/* Decorative reel: no framework, tracking, sound or third-party media requests. */
+/* Local poster-to-film loop. No audio, tracking or third-party media requests. */
 (function(){
   'use strict';
-  var hero = document.querySelector('.hero-cinema');
+  var hero = document.querySelector('.street-heat');
   var video = document.getElementById('cravingReel');
   var control = document.getElementById('motionControl');
-  if (!hero || !video || !control) return;
-  var label = control.querySelector('.motion-label');
-  var icon = control.querySelector('.motion-icon');
-  var chapters = Array.from(hero.querySelectorAll('.reel-chapter'));
+  var watch = document.getElementById('watchReel');
+  if (!hero || !video || !control || !watch) return;
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   var connection = navigator.connection;
   var wantsMotion = !reducedMotion.matches && !(connection && connection.saveData);
-  var visible = true;
+  var visible = !('IntersectionObserver' in window);
+  var phase = 'poster';
   var failed = false;
+  var timer;
   var playRequest = 0;
   control.hidden = false;
-
+  watch.hidden = false;
+  function canPlay(){ return wantsMotion && visible && !document.hidden; }
   function showState(playing){
     hero.dataset.motion = playing ? 'playing' : 'paused';
-    label.textContent = playing ? 'Pause motion' : 'Play motion';
-    icon.textContent = playing ? 'Ⅱ' : '▶';
+    control.querySelector('.motion-label').textContent = playing ? 'Pause motion' : 'Play motion';
+    control.querySelector('.motion-icon').textContent = playing ? 'Ⅱ' : '▶';
     control.setAttribute('aria-label', playing ? 'Pause video and animations' : 'Play video and animations');
   }
-
   function stop(){
+    clearTimeout(timer);
     playRequest++;
     video.pause();
     showState(false);
   }
-
-  function play(){
-    if (failed || !wantsMotion || !visible || document.hidden) return;
-    if (!video.getAttribute('src')){
-      video.src = video.dataset.src;
-      video.load();
-    }
+  function poster(){
+    phase = 'poster';
+    hero.classList.remove('has-film');
+    video.pause();
+    if (video.readyState) video.currentTime = 0;
+  }
+  function film(){
+    if (!canPlay() || failed) return;
+    clearTimeout(timer);
+    phase = 'film';
+    if (!video.getAttribute('src')){ video.src = video.dataset.src; video.load(); }
     var request = ++playRequest;
     video.play().then(function(){
       if (request !== playRequest) return;
-      if (!wantsMotion || !visible || document.hidden){ stop(); return; }
+      if (!canPlay()){ stop(); return; }
       hero.classList.add('has-film');
-      showState(true);
     }).catch(function(){
-      if (request === playRequest) showState(false);
+      // Leave the poster and decorative motion usable if autoplay is rejected.
+      if (request === playRequest) poster();
     });
   }
-
+  function play(){
+    if (!canPlay()) return;
+    showState(true);
+    clearTimeout(timer);
+    if (failed) return;
+    if (phase === 'film') film(); else timer = setTimeout(film, 6000);
+  }
   control.addEventListener('click', function(){
-    wantsMotion = video.paused;
+    wantsMotion = hero.dataset.motion !== 'playing';
     if (wantsMotion) play(); else stop();
   });
+  watch.addEventListener('click', function(){ wantsMotion = true; showState(true); film(); });
+  video.addEventListener('ended', function(){ poster(); play(); });
   video.addEventListener('error', function(){
     failed = true;
-    stop();
-    hero.classList.remove('has-film');
-    control.hidden = true;
-    document.getElementById('reelChapters').hidden = true;
+    playRequest++;
+    clearTimeout(timer);
+    poster();
+    watch.hidden = true;
   });
-  video.addEventListener('loadedmetadata', function(){
-    document.getElementById('reelChapters').hidden = false;
-  });
-  video.addEventListener('timeupdate', function(){
-    if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-    var sceneLength = video.duration / chapters.length;
-    var active = Math.min(chapters.length - 1, Math.floor(video.currentTime / sceneLength));
-    hero.style.setProperty('--reel-progress', ((video.currentTime % sceneLength) / sceneLength * 100) + '%');
-    chapters.forEach(function(chapter, index){
-      chapter.setAttribute('aria-current', index === active ? 'true' : 'false');
-    });
-  });
-  chapters.forEach(function(chapter, index){
-    chapter.addEventListener('click', function(){
-      if (!Number.isFinite(video.duration) || !video.duration) return;
-      video.currentTime = index * video.duration / chapters.length;
-      // Seeking never overrides an explicit pause or reduced-motion preference.
-    });
-  });
-  document.addEventListener('visibilitychange', function(){
-    if (document.hidden) stop(); else play();
-  });
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) stop(); else play(); });
   if ('IntersectionObserver' in window){
     new IntersectionObserver(function(entries){
       visible = entries[0].isIntersecting;
@@ -89,6 +81,13 @@
     wantsMotion = !event.matches && !(connection && connection.saveData);
     if (wantsMotion) play(); else stop();
   });
+  if (connection && connection.addEventListener){
+    connection.addEventListener('change', function(){
+      if (connection.saveData){ wantsMotion = false; stop(); }
+    });
+  }
+  var shortlist = document.getElementById('heroShortlist');
+  if (shortlist) shortlist.addEventListener('click', function(){ document.getElementById('viewFavBtn').click(); });
   showState(false);
   play();
 })();
